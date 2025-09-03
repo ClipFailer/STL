@@ -12,7 +12,11 @@ public:
 	~Vector();
 	Vector(const size_t count);
 	Vector(const size_t count, const T &value);
+	Vector(const Vector& other);
+	Vector(Vector&& rhs);
 
+	Vector<T>& operator=(const Vector& rhs);
+	Vector<T>& operator=(Vector&& rhs);
 	T& operator[](const size_t index);
 
 	friend std::ostream& operator<<(std::ostream &os, const Vector<T> &vec) 
@@ -35,6 +39,11 @@ public:
 	bool Remove(const T& item);
 	void RemoveBack();
 	void RemoveFront();
+	void Clear();
+	void ShrinkToFit();
+	bool IsEmpty() const;
+	void ClearAndShrink();
+	void ChangeGrowthFactor(const float newGrowthFactor);
 
 	T& Get(const size_t index) const;
 
@@ -46,7 +55,7 @@ private:
 	T* m_data;
 	size_t m_size;
 	size_t m_capacity;
-	
+	float m_growthFactor = 2;
 };
 
 template <typename T>
@@ -70,7 +79,7 @@ Vector<T>::Vector(const size_t count)
 	m_data = new T[count];
 
 	for (size_t i = 0; i < m_size; ++i)
-		m_data[i] = 0;
+		m_data[i] = T{};
 }
 
 template <typename T> 
@@ -85,7 +94,61 @@ Vector<T>::Vector(const size_t count, const T &value) : m_size(count), m_capacit
 }
 
 template <typename T>
-T& Vector<T>::operator[](const size_t index)
+Vector<T>::Vector(const Vector &other)
+{
+	m_size = other.m_size;
+	m_data = new T[m_size];
+
+	for(size_t i = 0; i < m_size; ++i)
+		m_data[i] = other.m_data[i];
+
+	m_capacity = other.m_capacity;
+}
+
+template <typename T>
+Vector<T>::Vector(Vector &&rhs) : m_data(rhs.m_data),
+								  m_size(rhs.m_size),
+								  m_capacity(rhs.m_capacity)
+{
+	rhs.m_data = nullptr;
+	rhs.m_size = 0;
+	rhs.m_capacity = 0;
+}
+
+template <typename T>
+Vector<T>& Vector<T>::operator=(const Vector &rhs)
+{
+	delete[] m_data;
+
+	m_size = rhs.m_size;
+	m_data = new T[m_size];
+
+	for(size_t i = 0; i < m_size; ++i)
+		m_data[i] = rhs.m_data[i];
+
+	m_capacity = rhs.m_capacity;
+
+	return *this;
+}
+
+template <typename T>
+Vector<T>& Vector<T>::operator=(Vector &&rhs)
+{
+	delete[] m_data;
+	m_size = rhs.m_size;
+	m_capacity = rhs.m_capacity;
+
+	m_data = rhs.m_data;
+
+	rhs.m_data = nullptr;
+	rhs.m_size = 0;
+	rhs.m_capacity = 0;
+
+	return *this;
+}
+
+template <typename T>
+T &Vector<T>::operator[](const size_t index)
 {
     return m_data[index];
 }
@@ -94,7 +157,7 @@ template <typename T>
 void Vector<T>::Insert(const T &newItem, const int index)
 {
 	if (m_size + 1 > m_capacity)
-		Reserve(m_capacity == 0 ? 1 : m_capacity * 2);
+		Reserve(m_capacity == 0 ? 4 : m_capacity * m_growthFactor);
 
 	for (size_t i = m_size; i > index; --i)
 		m_data[i] = m_data[i - 1];
@@ -146,7 +209,8 @@ bool Vector<T>::Remove(const T &item)
 template <typename T>
 void Vector<T>::RemoveBack()
 {
-	RemoveAt(m_size);
+	if (m_size > 0)
+		RemoveAt(m_size - 1);
 }
 
 template <typename T>
@@ -156,9 +220,51 @@ void Vector<T>::RemoveFront()
 }
 
 template <typename T>
+void Vector<T>::Clear()
+{
+	for (size_t i = 0; i < m_size; ++i)
+		m_data[i].~T();
+
+	m_size = 0;
+}
+
+template <typename T>
+void Vector<T>::ShrinkToFit()
+{
+	if (m_capacity == m_size) return;
+
+	m_capacity = m_size;
+	Reserve(m_capacity);
+}
+
+template <typename T>
+bool Vector<T>::IsEmpty() const
+{
+	return m_size == 0;
+}
+
+template <typename T>
+void Vector<T>::ClearAndShrink()
+{
+	Clear();
+	ShrinkToFit();
+}
+
+template <typename T>
+void Vector<T>::ChangeGrowthFactor(const float newGrowthFactor)
+{
+	if (newGrowthFactor < 1.f || newGrowthFactor > 4.f) 
+		throw std::invalid_argument("Growth must be between 1.0 and 4.0");
+
+	m_growthFactor = newGrowthFactor;
+}
+
+template <typename T>
 T &Vector<T>::Get(const size_t index) const
 {
-	if (index > m_size || index < 0) std::out_of_range("Vector: index out of range");
+	if (index > m_size - 1 || index < 0) throw std::out_of_range("Vector: index out of range");
+
+	return m_data[index];
 }
 
 template <typename T>
@@ -179,4 +285,5 @@ void Vector<T>::Reserve(const size_t newCapacity)
 	
 	delete[] m_data;
 	m_data = newData;
+	m_capacity = newCapacity;
 }

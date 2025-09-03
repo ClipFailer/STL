@@ -6,14 +6,15 @@ int main(int argc, char** argv)
 {
 	std::cout << "STL implentation\n";
 
-	Vector<int> vec(4, 4);
-	std::cout << vec;
+	Vector<int> vec;
+	vec.ChangeGrowthFactor(1.5f);
 
-	vec.Insert(10, 3);
-	std::cout << vec;
+	vec.AddBack(1);
+	vec.AddBack(5);
+	vec.AddBack(5);
+	vec.AddBack(5);
+	vec.AddBack(5);
 
-	std::cout << vec.Remove(10) << std::endl;
-	std::cout << vec;
 
 	return 0;
 }
